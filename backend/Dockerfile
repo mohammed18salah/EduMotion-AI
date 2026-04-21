@@ -1,14 +1,10 @@
-# استخدم نسخة بايثون خفيفة
 FROM python:3.10-slim
 
-# منع بايثون من كتابة ملفات التخزين المؤقت
+# إعداد البيئة الأساسية
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 
-# تعيين مجلد العمل
-WORKDIR /app
-
-# تثبيت متطلبات النظام الأساسية التي تحتاجها مكتبات Manim و FFmpeg
+# تثبيت متطلبات النظام الأساسية لـ FFmpeg و Manim
 RUN apt-get update && apt-get install -y \
     ffmpeg \
     libcairo2-dev \
@@ -19,15 +15,28 @@ RUN apt-get update && apt-get install -y \
     texlive-latex-recommended \
     && rm -rf /var/lib/apt/lists/*
 
-# نسخ متطلبات بايثون وتثبيتها
-COPY requirements.txt .
+# إضافة مستخدم بصلاحيات محدودة (مطلب أساسي من Hugging Face)
+RUN useradd -m -u 1000 user
+USER user
+ENV HOME=/home/user \
+    PATH=/home/user/.local/bin:$PATH
+
+# ضبط مجلد العمل الرئيسي
+WORKDIR $HOME/app
+
+# نسخ ملفات المتطلبات وتثبيت الحزم
+COPY --chown=user requirements.txt .
+RUN pip install --no-cache-dir --upgrade pip
 RUN pip install --no-cache-dir -r requirements.txt
 
-# إنشاء المجلدات المطلوبة للسكربتات والفيديوهات حتى لا تحدث مشكلة صلاحيات
-RUN mkdir -p /app/scenes /app/media/videos
+# إنشاء المجلدات المطلوبة قبل بدء التشغيل
+RUN mkdir -p $HOME/app/scenes $HOME/app/media/videos
 
-# نسخ باقي ملفات الباك-إند
-COPY . .
+# نسخ باقي مجلد الباك-إند
+COPY --chown=user . .
+
+# كشف بورت 7860 الذي تعتمده Hugging Face
+EXPOSE 7860
 
 # تشغيل خادم Uvicorn
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "7860"]
