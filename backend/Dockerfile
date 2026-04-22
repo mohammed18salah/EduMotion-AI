@@ -1,11 +1,17 @@
+# استخدم نسخة بايثون خفيفة
 FROM python:3.10-slim
 
-# إعداد البيئة الأساسية
+# منع بايثون من كتابة ملفات التخزين المؤقت
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 
-# تثبيت متطلبات النظام الأساسية لـ FFmpeg و Manim
+# تعيين مجلد العمل
+WORKDIR /app
+
+# تثبيت متطلبات النظام الأساسية لـ Manim و FFmpeg
 RUN apt-get update && apt-get install -y \
+    build-essential \
+    pkg-config \
     ffmpeg \
     libcairo2-dev \
     libpango1.0-dev \
@@ -15,28 +21,18 @@ RUN apt-get update && apt-get install -y \
     texlive-latex-recommended \
     && rm -rf /var/lib/apt/lists/*
 
-# إضافة مستخدم بصلاحيات محدودة (مطلب أساسي من Hugging Face)
-RUN useradd -m -u 1000 user
-USER user
-ENV HOME=/home/user \
-    PATH=/home/user/.local/bin:$PATH
-
-# ضبط مجلد العمل الرئيسي
-WORKDIR $HOME/app
-
-# نسخ ملفات المتطلبات وتثبيت الحزم
-COPY --chown=user requirements.txt .
-RUN pip install --no-cache-dir --upgrade pip
+# نسخ متطلبات بايثون وتثبيتها
+COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# إنشاء المجلدات المطلوبة قبل بدء التشغيل
-RUN mkdir -p $HOME/app/scenes $HOME/app/media/videos
+# إنشاء المجلدات المطلوبة للسكربتات والفيديوهات
+RUN mkdir -p /app/scenes /app/media/videos
 
-# نسخ باقي مجلد الباك-إند
-COPY --chown=user . .
+# نسخ باقي ملفات الباك-إند
+COPY . .
 
-# كشف بورت 7860 الذي تعتمده Hugging Face
-EXPOSE 7860
+# السماح للاتصال عبر بورت 8000
+EXPOSE 8000
 
 # تشغيل خادم Uvicorn
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "7860"]
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
