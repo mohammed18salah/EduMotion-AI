@@ -197,16 +197,6 @@ During development, we faced constant `503 Service Unavailable` errors and quota
 
 ---
 
-## 📸 Screenshots
-
-> *Add screenshots here after launch*
-
-| Home Page | Settings | Generated Video |
-|---|---|---|
-| ![home](screenshots/home.png) | ![settings](screenshots/settings.png) | ![video](screenshots/video.png) |
-
----
-
 ## 🌍 Supported Voices
 
 | Language | Gender | Voice Model |
