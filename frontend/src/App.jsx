@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Video, Wand2, Download, RotateCw, PlayCircle, Globe, Layout, Palette, Clock, CheckCircle2, AlertCircle, Moon, Sun, Info, Home } from 'lucide-react';
+import { Video, Wand2, Download, RotateCw, PlayCircle, Globe, Layout, Palette, Clock, CheckCircle2, AlertCircle, Moon, Sun, Info, Home, Sparkles } from 'lucide-react';
 import './index.css';
 
 // ─── Cookie helpers (persist user settings) ───────────────────────────────
@@ -17,20 +17,20 @@ const savePref  = (key, value)    => setCookie(`em_${key}`, value);
 
 const EXAMPLES = {
   ar: [
-    "نظرية فيثاغورس مع رسم مثلث قائم",
-    "دالة sin و cos على محور الإحداثيات",
-    "قانون نيوتن الثاني: القوة والكتلة",
-    "خوارزمية Bubble Sort خطوة بخطوة",
+    "كيف تعمل الشبكات العصبية؟",
+    "دورة حياة النجوم والثقوب السوداء",
+    "خوارزمية البحث الثنائي (Binary Search)",
+    "كيف يحدث الكسوف والخسوف؟",
   ],
   en: [
-    "Pythagorean theorem with right triangle",
-    "Sin and Cos function on coordinates",
-    "Newton's Second Law: Force and Mass",
-    "Bubble Sort algorithm step by step",
+    "How Neural Networks learn",
+    "Life cycle of a star to a black hole",
+    "Binary Search algorithm step-by-step",
+    "Solar and Lunar eclipses explained",
   ]
 };
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://127.0.0.1:8000";
+const API_BASE = import.meta.env.VITE_API_BASE_URL || "https://165.227.147.165.nip.io";
 
 const SAMPLE_VIDEO = `${API_BASE}/video/media/videos/scene_4933795092450800427/480p15/MainScene.mp4`;
 
@@ -143,7 +143,7 @@ export default function App() {
     setVideoUrl('');
 
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 180000); // 3 min timeout
+    const timeoutId = setTimeout(() => controller.abort(), 480000); // 8 min timeout
 
     try {
       const res = await fetch(`${API_BASE}/generate`, {
@@ -170,7 +170,7 @@ export default function App() {
     } catch (err) {
       clearTimeout(timeoutId);
       if (err.name === 'AbortError') {
-        setError('Request timed out after 3 minutes. The server may be busy — please try again.');
+        setError('Request timed out after 8 minutes. The server may be busy — please try again.');
       } else if (err.message === 'Failed to fetch' || err.message === 'NetworkError when attempting to fetch resource.') {
         setError('Cannot connect to the backend. Make sure the server is running on port 8000.');
       } else {
@@ -392,17 +392,23 @@ export default function App() {
                 </div>
               </form>
 
-              <div className="mt-8 flex flex-wrap items-center gap-2">
-                <span className="text-sm font-semibold text-slate-400 me-2">{t.tryAlso}</span>
-                {EXAMPLES[lang].map((ex, i) => (
-                  <button 
-                    key={i} 
-                    onClick={() => { setTopic(ex); setVideoUrl(''); setError(null); }}
-                    className="px-4 py-1.5 rounded-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-medium text-slate-600 dark:text-slate-300 hover:border-indigo-300 dark:hover:border-indigo-500 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors shadow-sm"
-                  >
-                    {ex}
-                  </button>
-                ))}
+              <div className="mt-8 flex flex-col sm:flex-row sm:items-center gap-3">
+                <span className="text-sm font-semibold text-slate-500 flex items-center gap-1.5">
+                  <Sparkles className="w-4 h-4 text-amber-500" />
+                  {t.tryAlso}
+                </span>
+                <div className="flex flex-wrap gap-2">
+                  {EXAMPLES[lang].map((ex, i) => (
+                    <button 
+                      key={i} 
+                      onClick={() => { setTopic(ex); setVideoUrl(''); setError(null); }}
+                      className="group px-3 py-1.5 rounded-lg bg-white dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-xs font-medium text-slate-600 dark:text-slate-300 hover:border-indigo-400 hover:bg-indigo-50/50 dark:hover:bg-indigo-500/10 dark:hover:border-indigo-500 hover:text-indigo-700 dark:hover:text-indigo-300 transition-all shadow-sm"
+                    >
+                      <span className="opacity-70 group-hover:opacity-100 transition-opacity me-1.5">›</span>
+                      {ex}
+                    </button>
+                  ))}
+                </div>
               </div>
 
               {/* GENERATION INLINE RESULT */}

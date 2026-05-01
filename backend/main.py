@@ -8,6 +8,29 @@ from fastapi.responses import FileResponse, JSONResponse
 from pydantic import BaseModel, field_validator
 from dotenv import load_dotenv
 
+# ─── Fix for Windows asyncio ConnectionResetError ───────────────────────────
+import sys
+if sys.platform == "win32":
+    import asyncio
+    from functools import wraps
+    from asyncio.proactor_events import _ProactorBasePipeTransport
+    
+    def silence_connection_reset(func):
+        @wraps(func)
+        def wrapper(self, *args, **kwargs):
+            try:
+                return func(self, *args, **kwargs)
+            except RuntimeError as e:
+                if str(e) != 'Event loop is closed':
+                    raise
+            except ConnectionResetError:
+                pass
+        return wrapper
+
+    if hasattr(_ProactorBasePipeTransport, '_call_connection_lost'):
+        _ProactorBasePipeTransport._call_connection_lost = silence_connection_reset(_ProactorBasePipeTransport._call_connection_lost)
+    _ProactorBasePipeTransport.__del__ = silence_connection_reset(_ProactorBasePipeTransport.__del__)
+
 load_dotenv()
 
 from ai_engine import generate_manim_script
@@ -157,11 +180,29 @@ async def create_video(request: GenerateRequest):
         os.makedirs(scenes_dir, exist_ok=True)
         
         filename = f"scenes/scene_{cache_key}.py"
-        video_path = generate_video(
-            script_code, request,
-            filename=filename,
-            voice_text=voice_text
-        )
+        try:
+            video_path = generate_video(
+                script_code, request,
+                filename=filename,
+                voice_text=voice_text
+            )
+        except Exception as e:
+            err_msg = str(e)
+            if "Failed to generate video" in err_msg or "AI generated Python syntax error" in err_msg or "forbidden Manim object" in err_msg or "Regenerate." in err_msg:
+                print(f"[main] Script error caught: {err_msg[:50]}... Triggering Runtime Correction Agent!")
+                from ai_engine import fix_runtime_error
+                fixed_code = fix_runtime_error(script_code, err_msg)
+                if fixed_code:
+                    print("[main] Retrying video generation with fixed code...")
+                    video_path = generate_video(
+                        fixed_code, request,
+                        filename=filename,
+                        voice_text=voice_text
+                    )
+                else:
+                    raise
+            else:
+                raise
 
         relative_path = os.path.relpath(
             video_path,

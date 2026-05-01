@@ -8,8 +8,8 @@ import uuid
 # Format: (language_code, gender) → edge-tts voice name
 VOICE_MAP = {
     # Arabic
-    ("ar", "female"): "ar-SA-ZariyahNeural",   # Saudi Arabic – female
-    ("ar", "male"):   "ar-SA-HamedNeural",      # Saudi Arabic – male
+    ("ar", "female"): "ar-AE-FatimaNeural",    # UAE Arabic – female (More natural)
+    ("ar", "male"):   "ar-AE-HamdanNeural",    # UAE Arabic – male
     # English
     ("en", "female"): "en-US-JennyNeural",      # US English – female
     ("en", "male"):   "en-US-GuyNeural",        # US English – male
@@ -206,6 +206,9 @@ config.background_color = "{bg_color}"
         voice_name  = VOICE_MAP.get((lang_code, voice_gender), DEFAULT_VOICE)
 
         tts_text = voice_text.strip() if voice_text.strip() else request.topic
+        # Remove markdown characters like asterisks and hashes so TTS doesn't read them
+        tts_text = re.sub(r'[*#_]', '', tts_text)
+        
         audio_path = os.path.join(backend_dir, f"tts_{uuid.uuid4().hex[:8]}.mp3")
         final_path = expected_path.replace(".mp4", "_voiced.mp4")
 
@@ -213,19 +216,28 @@ config.background_color = "{bg_color}"
         tts_ok = _generate_tts(tts_text, voice_name, audio_path)
 
         if tts_ok and os.path.exists(audio_path):
+            # Get actual video duration to trim audio to it (prevents video looping)
+            probe = subprocess.run(
+                ["ffprobe", "-v", "error", "-show_entries", "format=duration",
+                 "-of", "default=noprint_wrappers=1:nokey=1", expected_path],
+                capture_output=True, text=True, timeout=10
+            )
+            video_dur = probe.stdout.strip()
+
             ffmpeg_cmd = [
                 "ffmpeg", "-y",
-                "-i", expected_path,
-                "-stream_loop", "-1",
+                "-i", expected_path,   # video — plays ONCE, no loop
                 "-i", audio_path,
                 "-c:v", "copy",
                 "-c:a", "aac",
                 "-b:a", "128k",
-                "-shortest",
                 "-map", "0:v:0",
                 "-map", "1:a:0",
-                final_path
             ]
+            # Trim audio to video length so video never has to loop
+            if video_dur:
+                ffmpeg_cmd += ["-t", video_dur]
+            ffmpeg_cmd += ["-shortest", final_path]
             ff = subprocess.run(ffmpeg_cmd, capture_output=True, text=True, cwd=backend_dir)
             if ff.returncode == 0 and os.path.exists(final_path):
                 expected_path = final_path

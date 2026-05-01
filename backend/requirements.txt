@@ -4,3 +4,6 @@ manim
 google-genai
 pydantic
 python-dotenv
+edge-tts
+openai
+requests
